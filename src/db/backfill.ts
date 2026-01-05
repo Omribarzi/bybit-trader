@@ -6,7 +6,15 @@ import type { CandleRow } from "./client.js";
 config();
 
 const SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];
-const INTERVALS = ["1h", "4h", "1d"];
+const INTERVALS = ["1m", "1h", "4h", "1d"];
+
+// Days to backfill per interval (1m needs less history due to volume)
+const BACKFILL_DAYS: Record<string, number> = {
+  "1m": 30,   // 30 days of 1m data (~216k candles total)
+  "1h": 365,  // 1 year
+  "4h": 365,  // 1 year
+  "1d": 730,  // 2 years
+};
 
 // Bybit limits: 200 candles per request for spot
 const BATCH_SIZE = 200;
@@ -250,7 +258,8 @@ async function main() {
   for (const symbol of SYMBOLS) {
     for (const interval of INTERVALS) {
       try {
-        const inserted = await backfillSymbolExtended(symbol, interval, 365); // 1 year for now
+        const days = BACKFILL_DAYS[interval] || 365;
+        const inserted = await backfillSymbolExtended(symbol, interval, days);
         totalCandles += inserted;
       } catch (error) {
         console.error(`Failed to backfill ${symbol} ${interval}:`, error);

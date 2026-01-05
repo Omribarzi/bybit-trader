@@ -340,6 +340,63 @@ export async function insertSignal(signal: {
 }
 
 // ============================================
+// TICK OPERATIONS
+// ============================================
+
+export interface TickRow {
+  time: Date;
+  symbol: string;
+  price: number;
+  quantity: number;
+  side: "Buy" | "Sell";
+  trade_id?: string;
+}
+
+export async function insertTicks(ticks: TickRow[]): Promise<number> {
+  if (ticks.length === 0) return 0;
+
+  const values: any[] = [];
+  const placeholders: string[] = [];
+
+  ticks.forEach((t, i) => {
+    const offset = i * 6;
+    placeholders.push(
+      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`
+    );
+    values.push(t.time, t.symbol, t.price, t.quantity, t.side, t.trade_id);
+  });
+
+  const query = `
+    INSERT INTO ticks (time, symbol, price, quantity, side, trade_id)
+    VALUES ${placeholders.join(", ")}
+    ON CONFLICT (time, symbol, trade_id) DO NOTHING
+  `;
+
+  const result = await pool.query(query, values);
+  return result.rowCount || 0;
+}
+
+export async function getTickCount(symbol?: string): Promise<number> {
+  const query = symbol
+    ? "SELECT COUNT(*) FROM ticks WHERE symbol = $1"
+    : "SELECT COUNT(*) FROM ticks";
+  const result = await pool.query(query, symbol ? [symbol] : []);
+  return parseInt(result.rows[0].count);
+}
+
+export async function getLatestTick(symbol: string): Promise<TickRow | null> {
+  const query = `
+    SELECT time, symbol, price, quantity, side, trade_id
+    FROM ticks
+    WHERE symbol = $1
+    ORDER BY time DESC
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [symbol]);
+  return result.rows[0] || null;
+}
+
+// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 
