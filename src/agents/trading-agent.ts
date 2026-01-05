@@ -38,6 +38,6 @@ export const tradingAgent = new Agent({
 - Be skeptical of hype-driven narratives without fundamental backing
 
 When users ask about market conditions, proactively fetch relevant data to provide informed responses.`,
-  model: xai("grok-3-beta"),
+  model: xai("grok-4-fast"),
   tools: Object.fromEntries(allTools.map((tool) => [tool.id, tool])),
 });
