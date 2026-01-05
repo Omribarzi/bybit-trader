@@ -22,28 +22,39 @@ const systemPrompt = `You are an expert cryptocurrency trading assistant special
 - Analyze market data (prices, order books, candlesticks, volume)
 - Scan the market for opportunities (top gainers, losers, high volume)
 - Check wallet balances and portfolio status
+- Place market and limit orders for spot trading
+- Search X (Twitter) for real-time sentiment and news about cryptocurrencies
 
 ## Available Tools
-You have access to the following tools:
 
-1. getTicker(symbol: string) - Get current price and 24h statistics for a trading pair
-   - symbol: Trading pair like "BTCUSDT", "ETHUSDT", "SOLUSDT"
+### Market Data
+1. getTicker(symbol) - Get price and 24h stats (e.g., "BTCUSDT")
+2. scanMarket(sortBy, limit) - Find top gainers/losers/volume
+3. getOrderBook(symbol) - Get bid/ask depth
+4. getBalance(coin?) - Check wallet balance
 
-2. scanMarket(sortBy: "gainers"|"losers"|"volume", limit?: number) - Scan market for top coins
-   - sortBy: How to sort results
-   - limit: Number of results (default 10)
+### Trading
+5. placeMarketOrder(symbol, side, quantity) - Execute immediately at market price
+   - side: "Buy" or "Sell"
+   - quantity: Amount of base asset (e.g., 0.001 for BTC)
+6. placeLimitOrder(symbol, side, quantity, price) - Place order at specific price
+7. getOpenOrders(symbol?) - View pending orders
+8. cancelOrder(symbol, orderId) - Cancel an order
 
-3. getBalance(coin?: string) - Get wallet balance
-   - coin: Optional specific coin like "BTC", "USDT"
+### Sentiment Analysis
+9. searchX(query) - Search X/Twitter for crypto sentiment, news, influencer posts
 
-4. getOrderBook(symbol: string) - Get order book for a trading pair
+## Trading Guidelines
+- ALWAYS confirm with user before executing trades
+- Warn about risks (volatility, liquidity, pump-and-dump)
+- Use X sentiment to identify trending narratives
+- Never suggest putting all funds in one trade
 
 ## Response Style
-- Be concise but thorough in your analysis
-- Use data to support your observations
-- Highlight both opportunities and risks
-
-When users ask about prices or market data, always use the appropriate tool.`;
+- Be concise but thorough
+- Support analysis with data
+- Highlight both opportunities AND risks
+- Include relevant X sentiment when available`;
 
 // Tool definitions
 const tools = [
@@ -120,6 +131,117 @@ const tools = [
       },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "placeMarketOrder",
+      description: "Place a market order to buy or sell immediately at current market price. ALWAYS confirm with user first!",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: {
+            type: "string",
+            description: "Trading pair symbol like BTCUSDT",
+          },
+          side: {
+            type: "string",
+            enum: ["Buy", "Sell"],
+            description: "Order side: Buy or Sell",
+          },
+          quantity: {
+            type: "string",
+            description: "Amount of base asset to trade (e.g., '0.001' for 0.001 BTC)",
+          },
+        },
+        required: ["symbol", "side", "quantity"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "placeLimitOrder",
+      description: "Place a limit order at a specific price. Order executes when market reaches the price.",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: {
+            type: "string",
+            description: "Trading pair symbol like BTCUSDT",
+          },
+          side: {
+            type: "string",
+            enum: ["Buy", "Sell"],
+            description: "Order side: Buy or Sell",
+          },
+          quantity: {
+            type: "string",
+            description: "Amount of base asset to trade",
+          },
+          price: {
+            type: "string",
+            description: "Limit price for the order",
+          },
+        },
+        required: ["symbol", "side", "quantity", "price"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "getOpenOrders",
+      description: "Get all currently open/pending orders",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: {
+            type: "string",
+            description: "Optional: filter by trading pair",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "cancelOrder",
+      description: "Cancel an open order by its ID",
+      parameters: {
+        type: "object",
+        properties: {
+          symbol: {
+            type: "string",
+            description: "Trading pair symbol of the order",
+          },
+          orderId: {
+            type: "string",
+            description: "The order ID to cancel",
+          },
+        },
+        required: ["symbol", "orderId"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "searchX",
+      description: "Search X (Twitter) for real-time sentiment, news, and discussions about a cryptocurrency or topic",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search query (e.g., 'Bitcoin price', 'ETH news', '$SOL')",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
 ];
 
 // Tool execution
@@ -183,6 +305,151 @@ async function executeTool(name: string, args: Record<string, unknown>): Promise
         spread: (parseFloat(bestAsk) - parseFloat(bestBid)).toFixed(8),
         spreadPercent: ((parseFloat(bestAsk) - parseFloat(bestBid)) / parseFloat(bestBid) * 100).toFixed(4) + "%",
       };
+    }
+    case "placeMarketOrder": {
+      const symbol = args.symbol as string;
+      const side = args.side as "Buy" | "Sell";
+      const quantity = args.quantity as string;
+
+      if (!symbol || !side || !quantity) {
+        return { error: "Missing required parameters: symbol, side, quantity" };
+      }
+
+      try {
+        const result = await bybitClient.placeOrder({
+          symbol: symbol.toUpperCase(),
+          side,
+          orderType: "Market",
+          qty: quantity,
+        });
+        return {
+          success: true,
+          orderId: result.orderId,
+          symbol: result.symbol,
+          side: result.side,
+          quantity: result.qty,
+          status: result.status,
+          message: `Market ${side.toLowerCase()} order placed successfully`,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Order failed",
+        };
+      }
+    }
+    case "placeLimitOrder": {
+      const symbol = args.symbol as string;
+      const side = args.side as "Buy" | "Sell";
+      const quantity = args.quantity as string;
+      const price = args.price as string;
+
+      if (!symbol || !side || !quantity || !price) {
+        return { error: "Missing required parameters: symbol, side, quantity, price" };
+      }
+
+      try {
+        const result = await bybitClient.placeOrder({
+          symbol: symbol.toUpperCase(),
+          side,
+          orderType: "Limit",
+          qty: quantity,
+          price,
+        });
+        return {
+          success: true,
+          orderId: result.orderId,
+          symbol: result.symbol,
+          side: result.side,
+          quantity: result.qty,
+          price: result.price,
+          status: result.status,
+          message: `Limit ${side.toLowerCase()} order placed at ${price}`,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Order failed",
+        };
+      }
+    }
+    case "getOpenOrders": {
+      const symbol = args.symbol as string | undefined;
+      const orders = await bybitClient.getOpenOrders(symbol?.toUpperCase());
+      return {
+        count: orders.length,
+        orders: orders.map((o) => ({
+          orderId: o.orderId,
+          symbol: o.symbol,
+          side: o.side,
+          type: o.orderType,
+          price: o.price,
+          quantity: o.qty,
+          status: o.status,
+        })),
+      };
+    }
+    case "cancelOrder": {
+      const symbol = args.symbol as string;
+      const orderId = args.orderId as string;
+
+      if (!symbol || !orderId) {
+        return { error: "Missing required parameters: symbol, orderId" };
+      }
+
+      try {
+        const result = await bybitClient.cancelOrder(symbol.toUpperCase(), orderId);
+        return {
+          success: true,
+          orderId: result.orderId,
+          message: "Order cancelled successfully",
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Cancel failed",
+        };
+      }
+    }
+    case "searchX": {
+      const query = args.query as string;
+      if (!query) {
+        return { error: "Missing required parameter: query" };
+      }
+
+      // Use Grok's built-in X search capability via a separate API call
+      try {
+        const response = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "grok-2-1212",
+            messages: [
+              {
+                role: "user",
+                content: `Search X (Twitter) for recent posts about "${query}" in the cryptocurrency/trading context. Summarize the sentiment, key opinions from influencers, and any breaking news. Focus on the last 24 hours.`,
+              },
+            ],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`X search failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+          query,
+          sentiment: data.choices[0]?.message?.content || "No results found",
+        };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : "X search failed",
+        };
+      }
     }
     default:
       return { error: `Unknown tool: ${name}` };
@@ -277,6 +544,8 @@ async function main() {
   console.log("  - What's the current price of BTC?");
   console.log("  - Show me the top 5 gainers today");
   console.log("  - Check my wallet balance");
+  console.log("  - What's the X sentiment on Solana?");
+  console.log("  - Buy 0.001 BTC at market price");
   console.log("=".repeat(60));
 
   const history: Array<{ role: string; content: string; tool_call_id?: string; name?: string }> = [];
