@@ -62,25 +62,36 @@ export class BybitClient {
   constructor(config?: Partial<BybitConfig>) {
     this.apiKey = config?.apiKey || process.env.BYBIT_API_KEY || "";
     this.apiSecret = config?.apiSecret || process.env.BYBIT_API_SECRET || "";
-    this.baseUrl = config?.testnet
+    const useTestnet = config?.testnet ?? process.env.BYBIT_TESTNET === "true";
+    this.baseUrl = useTestnet
       ? "https://api-testnet.bybit.com"
       : "https://api.bybit.com";
   }
 
   private generateSignature(
     timestamp: string,
-    params: Record<string, string | number | undefined>
+    params: Record<string, string | number | undefined>,
+    method: "GET" | "POST"
   ): string {
     const filteredParams = Object.fromEntries(
       Object.entries(params).filter(([, v]) => v !== undefined)
     ) as Record<string, string | number>;
 
-    const sortedParams = Object.keys(filteredParams)
-      .sort()
-      .map((key) => `${key}=${filteredParams[key]}`)
-      .join("&");
+    let paramString: string;
+    if (method === "POST") {
+      // For POST requests, use the raw JSON body
+      paramString = JSON.stringify(filteredParams);
+    } else {
+      // For GET requests, use sorted query string
+      paramString = Object.keys(filteredParams)
+        .sort()
+        .map((key) => `${key}=${filteredParams[key]}`)
+        .join("&");
+    }
 
-    const signStr = `${timestamp}${this.apiKey}${this.recvWindow}${sortedParams}`;
+    const signStr = `${timestamp}${this.apiKey}${this.recvWindow}${paramString}`;
+
+    // Use HMAC-SHA256 signature
     return crypto
       .createHmac("sha256", this.apiSecret)
       .update(signStr)
@@ -102,7 +113,7 @@ export class BybitClient {
       headers["X-BAPI-API-KEY"] = this.apiKey;
       headers["X-BAPI-TIMESTAMP"] = timestamp;
       headers["X-BAPI-RECV-WINDOW"] = this.recvWindow.toString();
-      headers["X-BAPI-SIGN"] = this.generateSignature(timestamp, params);
+      headers["X-BAPI-SIGN"] = this.generateSignature(timestamp, params, method);
     }
 
     let url = `${this.baseUrl}${endpoint}`;
@@ -155,12 +166,17 @@ export class BybitClient {
   }
 
   async getOrderBook(symbol: string, limit = 25): Promise<OrderBookData> {
-    const result = await this.request<OrderBookData>(
+    const result = await this.request<{ s: string; a: [string, string][]; b: [string, string][]; ts: number }>(
       "GET",
       "/v5/market/orderbook",
       { category: "spot", symbol, limit }
     );
-    return result;
+    return {
+      symbol: result.s,
+      asks: result.a,
+      bids: result.b,
+      timestamp: result.ts,
+    };
   }
 
   async getKlines(
@@ -180,7 +196,7 @@ export class BybitClient {
 
   async getWalletBalance(): Promise<BalanceData[]> {
     const result = await this.request<{
-      list: { coin: { coin: string; free: string; locked: string }[] }[];
+      list: { coin: { coin: string; walletBalance: string; locked: string; availableToWithdraw: string }[] }[];
     }>("GET", "/v5/account/wallet-balance", { accountType: "UNIFIED" }, true);
 
     if (!result.list?.[0]?.coin) {
@@ -189,9 +205,9 @@ export class BybitClient {
 
     return result.list[0].coin.map((c) => ({
       coin: c.coin,
-      free: c.free,
-      locked: c.locked,
-      total: (parseFloat(c.free) + parseFloat(c.locked)).toString(),
+      free: c.availableToWithdraw || c.walletBalance,
+      locked: c.locked || "0",
+      total: c.walletBalance,
     }));
   }
 
