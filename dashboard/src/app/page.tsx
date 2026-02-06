@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { RefreshCw, Activity, Database, Zap, AlertTriangle, Wallet, Clock, History } from "lucide-react";
+import { RefreshCw, Activity, Database, Zap, AlertTriangle, Wallet, Clock, History, Target } from "lucide-react";
+import Link from "next/link";
 import { PriceCard } from "@/components/PriceCard";
 import { SentimentGauge } from "@/components/SentimentGauge";
 import { PriceChart } from "@/components/PriceChart";
@@ -373,6 +374,13 @@ export default function Dashboard() {
               Updated: {lastUpdate.toLocaleTimeString()}
             </span>
           )}
+          <Link
+            href="/insights"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors text-sm"
+          >
+            <Target className="w-4 h-4" />
+            Insights
+          </Link>
           <button
             onClick={() => {
               fetchMarket();
