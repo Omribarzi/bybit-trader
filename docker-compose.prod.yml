@@ -1,0 +1,79 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: bybit-trader-db
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: trader
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-trader_secret_2024}
+      POSTGRES_DB: bybit_trader
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./db/ticks.sql:/docker-entrypoint-initdb.d/02-ticks.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trader -d bybit_trader"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    container_name: bybit-trader-bot
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: bybit_trader
+      DB_USER: trader
+      DB_PASSWORD: ${DB_PASSWORD:-trader_secret_2024}
+      BOT_PAIRS: ${BOT_PAIRS:-BTCUSDT,ETHUSDT}
+      BOT_INTERVAL: ${BOT_INTERVAL:-60}
+      BOT_LEVERAGE: ${BOT_LEVERAGE:-3}
+      BOT_SCAN_INTERVAL: ${BOT_SCAN_INTERVAL:-60000}
+      BOT_EQUITY: ${BOT_EQUITY:-200}
+      BOT_LIVE: ${BOT_LIVE:-false}
+
+  tick-collector:
+    build: .
+    container_name: bybit-trader-ticks
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: bybit_trader
+      DB_USER: trader
+      DB_PASSWORD: ${DB_PASSWORD:-trader_secret_2024}
+    command: ["npx", "tsx", "src/db/tick-collector.ts"]
+
+  scheduler:
+    build: .
+    container_name: bybit-trader-scheduler
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: bybit_trader
+      DB_USER: trader
+      DB_PASSWORD: ${DB_PASSWORD:-trader_secret_2024}
+    command: ["npx", "tsx", "src/db/scheduler.ts"]
+
+volumes:
+  timescaledb_data:

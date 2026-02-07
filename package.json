@@ -8,6 +8,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "agent": "tsx src/run-agent.ts",
+    "bot": "tsx src/bot.ts",
+    "bot:live": "BOT_LIVE=true tsx src/bot.ts",
     "backfill": "tsx src/db/backfill.ts",
     "scheduler": "tsx src/db/scheduler.ts",
     "ticks": "tsx src/db/tick-collector.ts"
@@ -32,10 +34,14 @@
     "ai": "^6.0.7",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
+    "node-telegram-bot-api": "^0.67.0",
     "pg": "^8.16.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "ws": "^8.19.0",
     "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node-telegram-bot-api": "^0.64.13"
   }
 }

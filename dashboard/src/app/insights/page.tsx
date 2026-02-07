@@ -166,46 +166,39 @@ const systemModules: SystemModule[] = [
   {
     id: "telegram",
     name: "Telegram Bot Integration",
-    description: "Trade alerts, P&L summaries, /status, /kill commands",
-    status: "missing",
+    description: "/status, /profit, /kill commands + trade alerts + drawdown warnings",
+    status: "complete",
     icon: <Bot className="w-5 h-5" />,
     details:
-      "Need: Telegram bot via @BotFather, commands: /status, /profit, /kill (flatten all positions). Alerts on: trade execution, drawdown thresholds, bot heartbeat failures.",
+      "Built: Full Telegram bot with /start, /status, /profit, /positions, /kill, /help commands. Trade alerts with entry/exit details, drawdown warnings (daily/weekly/total), dead man's switch alerts, daily P&L summaries, startup notification.",
     blueprintRef: "Blueprint primary monitoring channel — control bot from phone",
   },
   {
     id: "deployment",
-    name: "VPS Deployment (Hetzner)",
-    description: "Docker Compose, systemd auto-restart, IP whitelisting",
-    status: "missing",
+    name: "VPS Deployment (Docker)",
+    description: "Production docker-compose with bot, DB, tick collector, scheduler",
+    status: "complete",
     icon: <Server className="w-5 h-5" />,
     details:
-      "Need: Hetzner CX32 (~$7.40/mo), Docker Compose deployment, API key IP whitelisting, UptimeRobot heartbeat, structured logging. 0.7ms latency to Binance.",
+      "Built: Dockerfile + docker-compose.prod.yml with 4 services (bot, timescaledb, tick-collector, scheduler). Health checks, auto-restart, env-file config. Ready for Hetzner CX32 deployment.",
     blueprintRef: "Blueprint: Hetzner CX32 — 4 vCPU, 8GB RAM, 80GB NVMe",
   },
 ];
 
 const gapAnalysis: GapItem[] = [
   {
-    area: "Monitoring",
-    current: "Web dashboard with auto-refresh",
-    blueprint: "Telegram bot with /kill command + dead man's switch",
+    area: "Paper Trading",
+    current: "Bot built but no dry-run done yet",
+    blueprint: "2+ weeks dry-run on testnet before live deployment",
     impact: "critical",
-    icon: <Bot className="w-4 h-4" />,
+    icon: <Clock className="w-4 h-4" />,
   },
   {
-    area: "Deployment",
-    current: "Local development only",
-    blueprint: "Hetzner VPS, Docker, IP whitelisting, UptimeRobot",
+    area: "VPS Provisioning",
+    current: "Docker config ready, need to provision Hetzner",
+    blueprint: "Hetzner CX32, IP whitelisting, UptimeRobot monitoring",
     impact: "high",
     icon: <Server className="w-4 h-4" />,
-  },
-  {
-    area: "Paper Trading",
-    current: "No dry-run validation done yet",
-    blueprint: "2+ weeks dry-run on testnet before live deployment",
-    impact: "high",
-    icon: <Clock className="w-4 h-4" />,
   },
   {
     area: "Funding Arb Execution",
@@ -213,13 +206,6 @@ const gapAnalysis: GapItem[] = [
     blueprint: "Auto open/close delta-neutral positions, collect funding",
     impact: "medium",
     icon: <DollarSign className="w-4 h-4" />,
-  },
-  {
-    area: "Framework",
-    current: "Custom TypeScript / Node.js",
-    blueprint: "Freqtrade (Python) — but staying TS (too much invested)",
-    impact: "medium",
-    icon: <Zap className="w-4 h-4" />,
   },
 ];
 
@@ -324,31 +310,31 @@ const roadmap: RoadmapPhase[] = [
       {
         title: "Telegram bot integration",
         description:
-          "/status, /profit, /kill commands. Trade alerts, drawdown warnings, heartbeat monitoring",
+          "/status, /profit, /kill commands. Trade alerts, drawdown warnings, heartbeat monitoring, daily summaries",
         priority: "critical",
         estimatedEffort: "2 days",
-        done: false,
+        done: true,
       },
       {
-        title: "Funding rate arbitrage strategy",
+        title: "Autonomous trading bot",
         description:
-          "Long spot + short perpetual, delta-neutral, auto-collect 8h funding. Allocate $400-500",
-        priority: "high",
-        estimatedEffort: "3 days",
-        done: false,
+          "Full bot runner: scan loop, risk-checked entries/exits, Telegram alerts, dry-run mode, graceful shutdown",
+        priority: "critical",
+        estimatedEffort: "2 days",
+        done: true,
       },
       {
-        title: "Hetzner VPS deployment",
+        title: "Docker production deployment",
         description:
-          "Docker Compose on CX32, API key IP whitelisting, systemd auto-restart, UptimeRobot",
+          "Dockerfile + docker-compose.prod.yml with bot, DB, tick-collector, scheduler services",
         priority: "high",
         estimatedEffort: "1 day",
-        done: false,
+        done: true,
       },
       {
         title: "Paper trading validation",
         description:
-          "2+ weeks dry-run on Bybit testnet. Compare results vs backtest (expect 30-50% degradation)",
+          "2+ weeks dry-run on Bybit testnet. Run: npm run bot. Compare results vs backtest (expect 30-50% degradation)",
         priority: "critical",
         estimatedEffort: "14 days",
         done: false,
@@ -857,30 +843,24 @@ export default function InsightsPage() {
           </div>
 
           <div className="bg-gray-900/50 border border-yellow-500/20 rounded-xl p-6">
-            <h3 className="font-semibold text-yellow-400 mb-3">Remaining Gaps</h3>
+            <h3 className="font-semibold text-yellow-400 mb-3">What's Left</h3>
             <ul className="space-y-2 text-sm text-gray-300">
               <li className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong>No Telegram bot</strong> — can't control the bot from your phone or get alerts on drawdowns. Critical for 24/7 autonomous operation
+                  <strong>Paper trading validation</strong> — run <code>npm run bot</code> for 2+ weeks on testnet. Compare live results vs backtest expectations. This is the most critical step before going live
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong>No VPS deployment</strong> — running locally means the bot stops when your machine sleeps. Need Hetzner CX32 + Docker Compose
+                  <strong>Provision Hetzner VPS</strong> — deploy via <code>docker compose -f docker-compose.prod.yml up -d</code>. Set up IP whitelisting on Bybit API keys
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong>No paper trading validation</strong> — all strategies need 2+ weeks of dry-run on testnet before any live capital. Expect 30-50% degradation
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
-                <span>
-                  <strong>Funding arb needs execution layer</strong> — monitor is built but auto-opening/closing delta-neutral positions is not wired up yet
+                  <strong>Telegram setup</strong> — create bot via @BotFather, set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env. Send /start to your bot
                 </span>
               </li>
             </ul>
