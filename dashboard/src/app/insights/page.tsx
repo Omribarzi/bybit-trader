@@ -116,51 +116,51 @@ const systemModules: SystemModule[] = [
   {
     id: "strategy-trend",
     name: "Trend Following (EMA Crossover)",
-    description: "Blueprint Strategy 1: Dual EMA with regime filter on perpetuals",
-    status: "missing",
+    description: "EMA 10/50 crossover with ADX regime filter, ATR-based stops",
+    status: "complete",
     icon: <TrendingUp className="w-5 h-5" />,
     details:
-      "Need: EMA 10/50 or 20/50 crossover on BTC/ETH perpetuals, 3-5x leverage, ADX > 25 regime filter, walk-forward validation. Target: 2-4% monthly in trending markets.",
+      "Built: EMA 10/50 crossover, ADX > 25 regime filter, ATR-based stop-loss/take-profit, RSI overbought/oversold guard, +DI/-DI directional confirmation. LONG/SHORT/CLOSE signals. Backtester-compatible.",
     blueprintRef: "Strategy 1 — validated systematic strategy with Sharpe 0.5-1.2",
   },
   {
     id: "strategy-funding",
-    name: "Funding Rate Arbitrage",
-    description: "Blueprint Strategy 2: Long spot + short perp, collect funding",
-    status: "missing",
+    name: "Funding Rate Monitor",
+    description: "Scans top 10 perps for funding arb opportunities",
+    status: "complete",
     icon: <DollarSign className="w-5 h-5" />,
     details:
-      "Need: Monitor 8h funding rates, open delta-neutral positions (long spot + short perpetual), auto-collect funding. Target Sharpe: 1.5-3.0. Allocate $400-500.",
+      "Built: Multi-symbol funding rate scanner, consistency analysis (7d history), annualized return calculation, spot vs futures basis tracking, arb P&L calculator. Ready for strategy 2 execution layer.",
     blueprintRef: "Strategy 2 — closest to 'free money', 19.26% avg annual return 2025",
   },
   {
     id: "futures",
     name: "Perpetual Futures Support",
-    description: "Leverage trading, position management, funding rate tracking",
-    status: "missing",
+    description: "Full futures client: leverage, positions, funding, emergency close",
+    status: "complete",
     icon: <Layers className="w-5 h-5" />,
     details:
-      "Current system is spot-only. Need: perpetual futures order types, leverage control (3-5x), position mode management, funding rate API integration, margin monitoring.",
+      "Built: Full V5 linear (USDT perpetual) client — market data, funding rates, position management, leverage control, TP/SL, order CRUD, emergency closeAllPositions() for kill switch. Supports testnet.",
     blueprintRef: "Entire blueprint is built around perpetual futures — this is foundational",
   },
   {
     id: "risk",
     name: "Risk Management System",
-    description: "Position sizing, drawdown limits, kill switch, circuit breakers",
-    status: "missing",
+    description: "Quarter-Kelly sizing, drawdown circuit breakers, kill switch, heartbeat",
+    status: "complete",
     icon: <Shield className="w-5 h-5" />,
     details:
-      "Need: Quarter-Kelly position sizing (2% max risk/trade), daily -3% halt, weekly -7% size reduction, -15% kill switch, 3-5 max positions, 25% max per asset, dead man's switch, Telegram /kill command.",
+      "Built: Quarter-Kelly position sizing (2% max risk/trade), daily -3% halt, weekly -7% size reduction (50%), -15% kill switch, 5 max positions, 25% max per asset, dead man's switch (5min heartbeat), Sharpe calculator, equity tracking.",
     blueprintRef: "Blueprint: 'Risk management is the first system you build, not the last'",
   },
   {
     id: "backtesting",
     name: "Walk-Forward Backtesting",
-    description: "Sequential in-sample/out-of-sample validation, Monte Carlo",
-    status: "partial",
+    description: "Rolling IS/OOS windows, overfitting detection, degradation analysis",
+    status: "complete",
     icon: <Clock className="w-5 h-5" />,
     details:
-      "Have basic backtester with SMA/EMA/RSI indicators. Missing: walk-forward analysis (6mo IS / 2mo OOS), Hyperopt-style parameter optimization, slippage modeling, min 100-trade requirement, overfitting checks.",
+      "Built: Walk-forward engine with 6mo IS / 2mo OOS rolling windows, 30-trade minimum, overfitting detection (Sharpe > 3.0 flag, >50% degradation flag), per-window breakdown, PASS/FAIL/WARNING verdict.",
     blueprintRef: "Blueprint mandates walk-forward as primary validation method",
   },
   {
@@ -187,38 +187,10 @@ const systemModules: SystemModule[] = [
 
 const gapAnalysis: GapItem[] = [
   {
-    area: "Market Type",
-    current: "Spot trading only",
-    blueprint: "Perpetual futures with 3-5x leverage",
-    impact: "critical",
-    icon: <Layers className="w-4 h-4" />,
-  },
-  {
-    area: "Primary Strategy",
-    current: "Sentiment + technical (60/40 blend)",
-    blueprint: "Trend-following EMA crossover + funding rate arbitrage",
-    impact: "critical",
-    icon: <TrendingUp className="w-4 h-4" />,
-  },
-  {
-    area: "Risk Management",
-    current: "Basic stop-loss/take-profit per signal",
-    blueprint: "Full system: Kelly sizing, drawdown circuit breakers, kill switch",
-    impact: "critical",
-    icon: <Shield className="w-4 h-4" />,
-  },
-  {
-    area: "Backtesting",
-    current: "Basic indicator calculations, no walk-forward",
-    blueprint: "Walk-forward analysis with 6mo/2mo windows, 100+ trade minimum",
-    impact: "high",
-    icon: <BarChart3 className="w-4 h-4" />,
-  },
-  {
     area: "Monitoring",
     current: "Web dashboard with auto-refresh",
     blueprint: "Telegram bot with /kill command + dead man's switch",
-    impact: "high",
+    impact: "critical",
     icon: <Bot className="w-4 h-4" />,
   },
   {
@@ -229,16 +201,23 @@ const gapAnalysis: GapItem[] = [
     icon: <Server className="w-4 h-4" />,
   },
   {
-    area: "Position Sizing",
-    current: "Fixed % based on signal confidence (5-20%)",
-    blueprint: "Quarter-Kelly with 2% hard cap per trade",
+    area: "Paper Trading",
+    current: "No dry-run validation done yet",
+    blueprint: "2+ weeks dry-run on testnet before live deployment",
     impact: "high",
-    icon: <Target className="w-4 h-4" />,
+    icon: <Clock className="w-4 h-4" />,
+  },
+  {
+    area: "Funding Arb Execution",
+    current: "Monitor built, no auto-execution yet",
+    blueprint: "Auto open/close delta-neutral positions, collect funding",
+    impact: "medium",
+    icon: <DollarSign className="w-4 h-4" />,
   },
   {
     area: "Framework",
     current: "Custom TypeScript / Node.js",
-    blueprint: "Freqtrade (Python) — free, battle-tested, Hyperopt built-in",
+    blueprint: "Freqtrade (Python) — but staying TS (too much invested)",
     impact: "medium",
     icon: <Zap className="w-4 h-4" />,
   },
@@ -291,16 +270,16 @@ const roadmap: RoadmapPhase[] = [
   {
     phase: 2,
     title: "Critical Infrastructure",
-    timeframe: "Weeks 3-4 (NOW)",
-    status: "current",
+    timeframe: "Weeks 3-4 (DONE)",
+    status: "done",
     tasks: [
       {
         title: "Perpetual futures support",
         description:
-          "Add futures order types, leverage control, position mode, margin monitoring to Bybit client",
+          "Full V5 linear client: market data, positions, leverage, TP/SL, funding rates, emergency close",
         priority: "critical",
         estimatedEffort: "2 days",
-        done: false,
+        done: true,
       },
       {
         title: "Risk management system",
@@ -308,39 +287,39 @@ const roadmap: RoadmapPhase[] = [
           "Quarter-Kelly sizing, 2% per-trade cap, -3% daily halt, -7% weekly reduction, -15% kill switch, dead man's switch",
         priority: "critical",
         estimatedEffort: "3 days",
-        done: false,
+        done: true,
       },
       {
         title: "Trend-following EMA strategy",
         description:
-          "EMA 10/50 crossover on BTC/ETH perpetuals, 3-5x leverage, ADX regime filter",
+          "EMA 10/50 crossover with ADX regime filter, ATR stops, +DI/-DI confirmation, RSI guard",
         priority: "critical",
         estimatedEffort: "2 days",
-        done: false,
+        done: true,
       },
       {
         title: "Funding rate monitor",
         description:
-          "Track 8h funding rates across top perpetual pairs, identify profitable opportunities",
+          "Multi-symbol scanner, consistency analysis, annualized returns, arb P&L calculator",
         priority: "high",
         estimatedEffort: "1 day",
-        done: false,
+        done: true,
       },
       {
         title: "Walk-forward backtesting",
         description:
-          "6-month in-sample / 2-month out-of-sample windows, 100+ trade requirement, overfitting detection",
+          "Rolling IS/OOS windows, 30-trade min, overfitting detection, PASS/FAIL/WARNING verdict",
         priority: "high",
         estimatedEffort: "3 days",
-        done: false,
+        done: true,
       },
     ],
   },
   {
     phase: 3,
     title: "Go Live Preparation",
-    timeframe: "Weeks 5-6",
-    status: "upcoming",
+    timeframe: "Weeks 5-6 (NOW)",
+    status: "current",
     tasks: [
       {
         title: "Telegram bot integration",
@@ -517,7 +496,7 @@ function ProgressRing({ percent }: { percent: number }) {
 
 export default function InsightsPage() {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-  const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([2])); // Current phase open by default
+  const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([3])); // Current phase open by default
 
   const toggleModule = (id: string) => {
     setExpandedModules((prev) => {
@@ -599,9 +578,9 @@ export default function InsightsPage() {
 
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
           <div className="text-sm text-gray-400 mb-2">Current Phase</div>
-          <div className="text-3xl font-bold text-yellow-400">2</div>
-          <div className="text-xs text-gray-500 mt-1">Critical Infrastructure</div>
-          <div className="text-xs text-yellow-400/70 mt-2">Futures + Risk + Strategy</div>
+          <div className="text-3xl font-bold text-yellow-400">3</div>
+          <div className="text-xs text-gray-500 mt-1">Go Live Preparation</div>
+          <div className="text-xs text-yellow-400/70 mt-2">Telegram + Deploy + Paper Trade</div>
         </div>
 
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
@@ -877,31 +856,31 @@ export default function InsightsPage() {
             </ul>
           </div>
 
-          <div className="bg-gray-900/50 border border-red-500/20 rounded-xl p-6">
-            <h3 className="font-semibold text-red-400 mb-3">Critical Gaps</h3>
+          <div className="bg-gray-900/50 border border-yellow-500/20 rounded-xl p-6">
+            <h3 className="font-semibold text-yellow-400 mb-3">Remaining Gaps</h3>
             <ul className="space-y-2 text-sm text-gray-300">
               <li className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong>No perpetual futures</strong> — the entire blueprint is built around perps with 3-5x leverage. Spot-only severely limits capital efficiency
+                  <strong>No Telegram bot</strong> — can't control the bot from your phone or get alerts on drawdowns. Critical for 24/7 autonomous operation
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong>No risk management system</strong> — one bad trade without drawdown limits or a kill switch could wipe the account
+                  <strong>No VPS deployment</strong> — running locally means the bot stops when your machine sleeps. Need Hetzner CX32 + Docker Compose
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong>No validated strategy</strong> — current sentiment strategy hasn't been walk-forward tested. Blueprint's EMA + funding rate are proven approaches
+                  <strong>No paper trading validation</strong> — all strategies need 2+ weeks of dry-run on testnet before any live capital. Expect 30-50% degradation
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong>No autonomous operation</strong> — can't run unattended without Telegram alerts, dead man's switch, or VPS deployment
+                  <strong>Funding arb needs execution layer</strong> — monitor is built but auto-opening/closing delta-neutral positions is not wired up yet
                 </span>
               </li>
             </ul>
